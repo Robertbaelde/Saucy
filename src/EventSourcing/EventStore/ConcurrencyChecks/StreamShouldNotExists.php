@@ -1,6 +1,6 @@
 <?php
 
-namespace Robertbaelde\Saucy\MessageStore\ConcurrencyChecks;
+namespace Robertbaelde\Saucy\EventSourcing\EventStore\ConcurrencyChecks;
 
 final readonly class StreamShouldNotExists implements ConcurrencyCheck
 {

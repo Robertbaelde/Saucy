@@ -1,6 +1,6 @@
 <?php
 
-namespace Robertbaelde\Saucy\MessageStore;
+namespace Robertbaelde\Saucy\EventSourcing\EventStore;
 
 class Stream
 {

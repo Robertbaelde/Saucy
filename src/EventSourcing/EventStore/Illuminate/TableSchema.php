@@ -1,13 +1,15 @@
 <?php
 
-namespace Robertbaelde\Saucy\MessageStore\Illuminate;
+namespace Robertbaelde\Saucy\EventSourcing\EventStore\Illuminate;
 
 interface TableSchema
 {
+    public function getSequenceColumn(): string;
+
     public function getEventIdColumn(): string;
     public function getTypeColumn(): string;
     public function getPayloadColumn(): string;
-    public function getMetaDataColumn(): string;
+    public function getHeadersColumn(): string;
 
-    public function getIdColumn(): string;
+
 }

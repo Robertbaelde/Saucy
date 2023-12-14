@@ -1,6 +1,6 @@
 <?php
 
-namespace Robertbaelde\Saucy\MessageStore\Exceptions;
+namespace Robertbaelde\Saucy\EventSourcing\EventStore\Exceptions;
 
 final class StreamExistsException extends ConcurrencyException
 {

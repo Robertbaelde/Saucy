@@ -2,14 +2,7 @@
 
 namespace Robertbaelde\Saucy\MessageStore\EventStore;
 
-final readonly class EventIdGenerator
+interface EventIdGenerator
 {
-    public function __construct()
-    {
-    }
-
-    public function generate(): string
-    {
-        return uniqid();
-    }
+    public function generate(): string;
 }

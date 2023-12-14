@@ -1,9 +1,8 @@
 <?php
 
-namespace Robertbaelde\Saucy\MessageStore\EventStore;
+namespace Robertbaelde\Saucy\EventSourcing\EventStore;
 
 use EventSauce\EventSourcing\AggregateRootId;
-use Robertbaelde\Saucy\MessageStore\Stream;
 
 final readonly class AggregateRootStreamNameInflector
 {

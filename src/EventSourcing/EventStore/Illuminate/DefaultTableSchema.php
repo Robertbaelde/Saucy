@@ -1,6 +1,6 @@
 <?php
 
-namespace Robertbaelde\Saucy\MessageStore\Illuminate;
+namespace Robertbaelde\Saucy\EventSourcing\EventStore\Illuminate;
 
 final readonly class DefaultTableSchema implements TableSchema
 {
@@ -19,13 +19,13 @@ final readonly class DefaultTableSchema implements TableSchema
         return 'payload';
     }
 
-    public function getMetaDataColumn(): string
+    public function getHeadersColumn(): string
     {
-        return 'meta_data';
+        return 'headers';
     }
 
-    public function getIdColumn(): string
+    public function getSequenceColumn(): string
     {
-        return 'id';
+        return 'sequence';
     }
 }

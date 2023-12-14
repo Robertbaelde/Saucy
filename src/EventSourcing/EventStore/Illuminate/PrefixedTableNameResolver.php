@@ -1,8 +1,8 @@
 <?php
 
-namespace Robertbaelde\Saucy\MessageStore\Illuminate;
+namespace Robertbaelde\Saucy\EventSourcing\EventStore\Illuminate;
 
-use Robertbaelde\Saucy\MessageStore\Stream;
+use Robertbaelde\Saucy\EventSourcing\EventStore\Stream;
 
 final readonly class PrefixedTableNameResolver implements StreamTableNameResolver
 {

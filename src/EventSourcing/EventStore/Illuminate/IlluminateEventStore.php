@@ -1,28 +1,30 @@
 <?php
 
-namespace Robertbaelde\Saucy\MessageStore\Illuminate;
+namespace Robertbaelde\Saucy\EventSourcing\EventStore\Illuminate;
 
 use Illuminate\Database\Connection;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\QueryException;
 use Illuminate\Database\Schema\Blueprint;
-use Robertbaelde\Saucy\MessageStore\ConcurrencyChecks\ConcurrencyCheck;
-use Robertbaelde\Saucy\MessageStore\ConcurrencyChecks\StreamShouldNotExists;
-use Robertbaelde\Saucy\MessageStore\ConcurrencyChecks\WithLastKnownEventId;
-use Robertbaelde\Saucy\MessageStore\Message;
-use Robertbaelde\Saucy\MessageStore\MessageStore;
-use Robertbaelde\Saucy\MessageStore\Exceptions\ConcurrencyException;
-use Robertbaelde\Saucy\MessageStore\Exceptions\StreamExistsException;
-use Robertbaelde\Saucy\MessageStore\Messages;
-use Robertbaelde\Saucy\MessageStore\Position;
-use Robertbaelde\Saucy\MessageStore\Stream;
+use Robertbaelde\Saucy\EventSourcing\EventStore\ConcurrencyChecks\ConcurrencyCheck;
+use Robertbaelde\Saucy\EventSourcing\EventStore\ConcurrencyChecks\StreamShouldNotExists;
+use Robertbaelde\Saucy\EventSourcing\EventStore\ConcurrencyChecks\WithLastKnownEventId;
+use Robertbaelde\Saucy\EventSourcing\EventStore\ConcurrencyChecks\WithLastKnownSequenceNumber;
+use Robertbaelde\Saucy\EventSourcing\EventStore\Events;
+use Robertbaelde\Saucy\EventSourcing\EventStore\EventStore;
+use Robertbaelde\Saucy\EventSourcing\EventStore\Exceptions\ConcurrencyException;
+use Robertbaelde\Saucy\EventSourcing\EventStore\Exceptions\StreamExistsException;
+use Robertbaelde\Saucy\EventSourcing\EventStore\Position;
+use Robertbaelde\Saucy\EventSourcing\EventStore\Serialization\EventSerializer;
+use Robertbaelde\Saucy\EventSourcing\EventStore\Stream;
 
-final readonly class IlluminateMessageStore implements MessageStore
+final readonly class IlluminateEventStore implements EventStore
 {
     public function __construct(
         private ConnectionInterface $connection,
         private StreamTableNameResolver $streamTableNameResolver,
         private TableSchema $tableSchema,
+        private EventSerializer $eventSerializer,
     )
     {
     }
@@ -31,19 +33,11 @@ final readonly class IlluminateMessageStore implements MessageStore
      * @throws ConcurrencyException
      * @throws \Exception
      */
-    public function appendToStream(Stream $stream, Messages $messages, ?ConcurrencyCheck $concurrencyCheck = null): void
+    public function appendToStream(Stream $stream, Events $events, ?ConcurrencyCheck $concurrencyCheck = null): void
     {
         $tableName = $this->streamTableNameResolver->streamToTableName($stream);
 
-        $insertValues = [];
-        foreach ($messages->messages as $message){
-            $insertValues[] = [
-                $this->tableSchema->getEventIdColumn() => $message->eventId,
-                $this->tableSchema->getTypeColumn() => $message->type,
-                $this->tableSchema->getPayloadColumn() => json_encode($message->payload),
-                $this->tableSchema->getMetaDataColumn() => json_encode($message->metaData),
-            ];
-        }
+        $insertValues = $this->eventSerializer->serializeEvents($events, $this->tableSchema);
 
         if($concurrencyCheck instanceof StreamShouldNotExists){
             if($this->streamExists($tableName) && !$this->checkStreamEmpty($tableName)){
@@ -68,7 +62,7 @@ final readonly class IlluminateMessageStore implements MessageStore
             }
 
             $this->createStreamTable($tableName);
-            $this->appendToStream($stream, $messages, $concurrencyCheck);
+            $this->appendToStream($stream, $events, $concurrencyCheck);
 
         } catch (\Throwable $throwable) {
             $this->connection->rollBack();
@@ -76,22 +70,18 @@ final readonly class IlluminateMessageStore implements MessageStore
         }
     }
 
-    public function getMessages(Stream $stream, ?Position $position = null, ?int $limit = null): Messages
+    public function getEvents(Stream $stream, ?Position $position = null, ?int $limit = null): Events
     {
         try {
-            return new Messages(...array_map(function (object $row){
-                return new Message(
-                    eventId: $row->{$this->tableSchema->getEventIdColumn()},
-                    type: $row->{$this->tableSchema->getTypeColumn()},
-                    payload: json_decode($row->{$this->tableSchema->getPayloadColumn()}, true),
-                    metaData: json_decode($row->{$this->tableSchema->getMetaDataColumn()}, true),
-                );
-            }, $this->connection->table($this->streamTableNameResolver->streamToTableName($stream))->orderBy($this->tableSchema->getIdColumn())->get()->toArray()));
+            return $this->eventSerializer->deserializeEvents(
+                $this->connection->table($this->streamTableNameResolver->streamToTableName($stream))->orderBy($this->tableSchema->getSequenceColumn())->get()->toArray(),
+                $this->tableSchema
+            );
         } catch (QueryException $queryException) {
             if($queryException->getCode() !== '42S02'){
                 throw $queryException;
             }
-            return new Messages();
+            return new Events();
         }
     }
 
@@ -101,11 +91,11 @@ final readonly class IlluminateMessageStore implements MessageStore
             throw new \Exception('Connection is not an instance of Connection');
         }
         $this->connection->getSchemaBuilder()->create($tableName, function (Blueprint $table) {
-            $table->id();
+            $table->id($this->tableSchema->getSequenceColumn());
             $table->string($this->tableSchema->getEventIdColumn());
             $table->string($this->tableSchema->getTypeColumn());
             $table->json($this->tableSchema->getPayloadColumn());
-            $table->json($this->tableSchema->getMetaDataColumn());
+            $table->json($this->tableSchema->getHeadersColumn());
             $table->unique($this->tableSchema->getEventIdColumn(), 'event_id_unique');
         });
     }
@@ -123,7 +113,7 @@ final readonly class IlluminateMessageStore implements MessageStore
     private function insert(string $tableName, array $insertValues, ?ConcurrencyCheck $concurrencyCheck): void
     {
 
-        if(!$concurrencyCheck instanceof WithLastKnownEventId){
+        if(!$concurrencyCheck instanceof WithLastKnownEventId && !$concurrencyCheck instanceof WithLastKnownSequenceNumber){
             $this->connection->table($tableName)->insertOrIgnore($insertValues);
             return;
         }
@@ -144,8 +134,15 @@ final readonly class IlluminateMessageStore implements MessageStore
         $subQuerySql = implode(" UNION ALL ", $subQuerySqlParts);
 
         // The final subquery with the conditional check
-        $finalSubQuery = $this->connection->table($this->connection->raw("($subQuerySql) as sub"))
-            ->whereRaw("(SELECT `{$this->tableSchema->getEventIdColumn()}` FROM `$tableName` ORDER BY `{$this->tableSchema->getIdColumn()}` DESC LIMIT 1) = ?", [$concurrencyCheck->lastEventId]);
+        $finalSubQuery = $this->connection->table($this->connection->raw("($subQuerySql) as sub"));
+
+        if($concurrencyCheck instanceof WithLastKnownEventId){
+            $finalSubQuery = $finalSubQuery->whereRaw("(SELECT `{$this->tableSchema->getEventIdColumn()}` FROM `$tableName` ORDER BY `{$this->tableSchema->getSequenceColumn()}` DESC LIMIT 1) = ?", [$concurrencyCheck->lastEventId]);
+        }
+
+        if($concurrencyCheck instanceof WithLastKnownSequenceNumber){
+            $finalSubQuery = $finalSubQuery->whereRaw("(SELECT `{$this->tableSchema->getSequenceColumn()}` FROM `$tableName` ORDER BY `{$this->tableSchema->getSequenceColumn()}` DESC LIMIT 1) = ?", [$concurrencyCheck->lastSequenceNumber]);
+        }
 
         // Perform the insert using the final subquery
         $rowCount = $this->connection->table($tableName)->insertUsing($columns, $finalSubQuery);
@@ -158,7 +155,7 @@ final readonly class IlluminateMessageStore implements MessageStore
     private function insertIntoAll(array $insertValues, string $originalStream): void
     {
         $insertValues = array_map(function ($row) use ($originalStream){
-            $row[$this->tableSchema->getMetaDataColumn()] = json_encode(array_merge(json_decode($row[$this->tableSchema->getMetaDataColumn()], true), ['_original_stream' => $originalStream]));
+            $row[$this->tableSchema->getHeadersColumn()] = json_encode(array_merge(json_decode($row[$this->tableSchema->getHeadersColumn()], true), ['_original_stream' => $originalStream]));
             return $row;
         }, $insertValues);
 
