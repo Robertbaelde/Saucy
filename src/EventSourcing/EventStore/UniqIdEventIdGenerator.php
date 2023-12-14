@@ -1,6 +1,6 @@
 <?php
 
-namespace Robertbaelde\Saucy\MessageStore\EventStore;
+namespace Robertbaelde\Saucy\EventSourcing\EventStore;
 
 final readonly class UniqIdEventIdGenerator implements EventIdGenerator
 {

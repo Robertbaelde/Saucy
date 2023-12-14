@@ -10,4 +10,13 @@ final readonly class Event
         public Headers $headers,
     ) {
     }
+
+    public function addHeader(EventStoreHeader | string $header, string $name): self
+    {
+        return new self(
+            $this->eventId,
+            $this->payload,
+            $this->headers->with($header, $name),
+        );
+    }
 }

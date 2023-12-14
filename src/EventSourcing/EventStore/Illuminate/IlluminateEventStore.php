@@ -46,27 +46,17 @@ final readonly class IlluminateEventStore implements EventStore
         }
 
         try {
-            $this->connection->beginTransaction();
             $this->insert($tableName, $insertValues, $concurrencyCheck);
-            $this->insertIntoAll($insertValues, $stream->name);
-            $this->connection->commit();
         } catch (QueryException $queryException) {
-            $this->connection->rollBack();
-
             if($queryException->getCode() !== '42S02'){
                 throw $queryException;
             }
 
-            if(str_contains($queryException->getMessage(), $this->streamTableNameResolver->streamToTableName(Stream::all()))){
-                throw new \Exception('all stream does not exist');
-            }
-
+            $this->connection->commit();
             $this->createStreamTable($tableName);
+            // restart transaction?
+            $this->connection->beginTransaction();
             $this->appendToStream($stream, $events, $concurrencyCheck);
-
-        } catch (\Throwable $throwable) {
-            $this->connection->rollBack();
-            throw $throwable;
         }
     }
 
@@ -150,20 +140,5 @@ final readonly class IlluminateEventStore implements EventStore
         if($rowCount === 0){
             throw new ConcurrencyException();
         }
-    }
-
-    private function insertIntoAll(array $insertValues, string $originalStream): void
-    {
-        $insertValues = array_map(function ($row) use ($originalStream){
-            $row[$this->tableSchema->getHeadersColumn()] = json_encode(array_merge(json_decode($row[$this->tableSchema->getHeadersColumn()], true), ['_original_stream' => $originalStream]));
-            return $row;
-        }, $insertValues);
-
-        $this->connection->table($this->streamTableNameResolver->streamToTableName(Stream::all()))->insertOrIgnore($insertValues);
-    }
-
-    public function migrate(): void
-    {
-        $this->createStreamTable($this->streamTableNameResolver->streamToTableName(Stream::all()));
     }
 }

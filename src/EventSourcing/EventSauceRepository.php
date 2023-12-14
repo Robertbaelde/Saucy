@@ -6,14 +6,12 @@ use EventSauce\EventSourcing\AggregateRoot;
 use EventSauce\EventSourcing\AggregateRootId;
 use Robertbaelde\Saucy\EventSourcing\EventStore\AggregateRootStreamNameInflector;
 use Robertbaelde\Saucy\EventSourcing\EventStore\ConcurrencyChecks\StreamShouldNotExists;
-use Robertbaelde\Saucy\EventSourcing\EventStore\ConcurrencyChecks\WithLastKnownEventId;
 use Robertbaelde\Saucy\EventSourcing\EventStore\ConcurrencyChecks\WithLastKnownSequenceNumber;
 use Robertbaelde\Saucy\EventSourcing\EventStore\Event;
+use Robertbaelde\Saucy\EventSourcing\EventStore\EventIdGenerator;
 use Robertbaelde\Saucy\EventSourcing\EventStore\Events;
 use Robertbaelde\Saucy\EventSourcing\EventStore\EventStore;
-use Robertbaelde\Saucy\EventSourcing\EventStore\EventStoreHeader;
 use Robertbaelde\Saucy\EventSourcing\EventStore\Headers;
-use Robertbaelde\Saucy\MessageStore\EventStore\EventIdGenerator;
 
 final class EventSauceRepository
 {

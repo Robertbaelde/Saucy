@@ -19,11 +19,6 @@ final readonly class Events
         return new self(...$event);
     }
 
-    public function getCheckpoint(): string
-    {
-        return $this->events[count($this->events) - 1]->eventId;
-    }
-
     public function asGeneratorForEventSauce(): \Generator
     {
         $sequence = 0;
@@ -32,6 +27,13 @@ final readonly class Events
             $sequence = $event->headers->get(EventStoreHeader::EVENT_SEQUENCE);
         }
         return $sequence;
+    }
+
+    public function addHeader(EventStoreHeader | string $header, string $name): self
+    {
+        return new self(...array_map(function ($event) use ($header, $name) {
+            return $event->addHeader($header, $name);
+        }, $this->events));
     }
 
 }
