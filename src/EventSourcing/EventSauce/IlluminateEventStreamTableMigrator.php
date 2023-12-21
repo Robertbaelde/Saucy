@@ -25,7 +25,7 @@ final readonly class IlluminateEventStreamTableMigrator implements EventStreamTa
         $this->connection->getSchemaBuilder()->create($type, function (Blueprint $table) {
             $table->id();
             $table->uuid('event_id');
-            $table->uuid('aggregate_root_id');
+            $table->string('aggregate_root_id');
             $table->integer('version');
             $table->json('payload');
             $table->index(['aggregate_root_id', 'version'], 'reconstitution_index');
