@@ -11,6 +11,7 @@ use Robertbaelde\Saucy\EventSourcing\EventStore\Event;
 use Robertbaelde\Saucy\EventSourcing\EventStore\EventIdGenerator;
 use Robertbaelde\Saucy\EventSourcing\EventStore\Events;
 use Robertbaelde\Saucy\EventSourcing\EventStore\EventStore;
+use Robertbaelde\Saucy\EventSourcing\EventStore\EventStoreHeader;
 use Robertbaelde\Saucy\EventSourcing\EventStore\Headers;
 
 final class EventSauceRepository

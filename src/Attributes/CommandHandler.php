@@ -9,6 +9,7 @@ class CommandHandler
 {
     public function __construct(
         public ?string $handlingCommand = null,
+        public bool $queue = false,
     )
     {
     }

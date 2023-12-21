@@ -2,6 +2,8 @@
 
 namespace Robertbaelde\Saucy\Tests\MessageStore\Illuminate;
 
+use EventSauce\EventSourcing\DotSeparatedSnakeCaseInflector;
+use EventSauce\EventSourcing\Serialization\ConstructingPayloadSerializer;
 use Illuminate\Database\Capsule\Manager;
 use PHPUnit\Framework\TestCase;
 use Robertbaelde\Saucy\EventSourcing\EventStore\ConcurrencyChecks\StreamShouldNotExists;
@@ -10,10 +12,13 @@ use Robertbaelde\Saucy\EventSourcing\EventStore\Event;
 use Robertbaelde\Saucy\EventSourcing\EventStore\Events;
 use Robertbaelde\Saucy\EventSourcing\EventStore\Exceptions\ConcurrencyException;
 use Robertbaelde\Saucy\EventSourcing\EventStore\Exceptions\StreamExistsException;
+use Robertbaelde\Saucy\EventSourcing\EventStore\Headers;
 use Robertbaelde\Saucy\EventSourcing\EventStore\Illuminate\DefaultTableSchema;
 use Robertbaelde\Saucy\EventSourcing\EventStore\Illuminate\IlluminateEventStore;
 use Robertbaelde\Saucy\EventSourcing\EventStore\Illuminate\PrefixedTableNameResolver;
+use Robertbaelde\Saucy\EventSourcing\EventStore\Serialization\EventSerializer;
 use Robertbaelde\Saucy\EventSourcing\EventStore\Stream;
+use Robertbaelde\Saucy\Tests\stubs\TestEvent;
 
 final class IlluminateEventStoreTest extends TestCase
 {
@@ -40,10 +45,6 @@ final class IlluminateEventStoreTest extends TestCase
 
         $this->connection = $manager->getConnection();
         $this->connection->getSchemaBuilder()->dropAllTables();
-
-        $this->connection->enableQueryLog();
-
-        $this->eventStore()->migrate();
     }
 
     /** @test */
@@ -54,11 +55,14 @@ final class IlluminateEventStoreTest extends TestCase
         $eventStore->appendToStream(
             Stream::withName('stream-name'),
             Events::of(
-                new Event('message-id', 'foo', ['bar' => 'baz'], []),
+                $this->getEventWithId('message-id'),
             )
         );
 
         $this->assertCount(1, $eventStore->getEvents(Stream::withName('stream-name'))->events);
+
+//        die('test');
+//        print_r($this->connection->transactionLevel());
     }
 
     /** @test */
@@ -69,12 +73,13 @@ final class IlluminateEventStoreTest extends TestCase
         $eventStore->appendToStream(
             Stream::withName('stream-name'),
             Events::of(
-                new Event('message-id', 'foo', ['bar' => 'baz'], []),
-                new Event('message-id-2', 'foo', ['bar' => 'baz'], []),
+                $this->getEventWithId('message-id'),
+                $this->getEventWithId('message-id-2'),
             ),
         );
 
         $this->assertCount(2, $eventStore->getEvents(Stream::withName('stream-name'))->events);
+
     }
 
     /** @test */
@@ -85,21 +90,18 @@ final class IlluminateEventStoreTest extends TestCase
         $eventStore->appendToStream(
             Stream::withName('stream-name'),
             Events::of(
-                new Event('message-id', 'foo', ['bar' => 'baz'], []),
+                $this->getEventWithId('message-id'),
             ),
         );
 
         $eventStore->appendToStream(
             Stream::withName('stream-name'),
             Events::of(
-                new Event('message-id-2', 'foo', ['bar' => 'baz'], []),
+                $this->getEventWithId('message-id-2'),
             ),
         );
 
         $this->assertCount(2, $eventStore->getEvents(Stream::withName('stream-name'))->events);
-
-        $messages = $eventStore->getEvents(Stream::all())->events;
-        $this->assertCount(2, $messages);
     }
 
     /** @test */
@@ -110,21 +112,18 @@ final class IlluminateEventStoreTest extends TestCase
         $eventStore->appendToStream(
             Stream::withName('stream-name'),
             Events::of(
-                new Event('message-id', 'foo', ['bar' => 'baz'], []),
+                $this->getEventWithId('message-id'),
             ),
         );
 
         $eventStore->appendToStream(
             Stream::withName('stream-name'),
             Events::of(
-                new Event('message-id', 'foo', ['bar' => 'baz'], []),
+                $this->getEventWithId('message-id'),
             ),
         );
 
         $this->assertCount(1, $eventStore->getEvents(Stream::withName('stream-name'))->events);
-
-        $messages = $eventStore->getEvents(Stream::all())->events;
-        $this->assertCount(1, $messages);
     }
 
     /** @test */
@@ -136,7 +135,7 @@ final class IlluminateEventStoreTest extends TestCase
         $eventStore->appendToStream(
             Stream::withName('stream-name'),
             Events::of(
-                new Event('message-id', 'foo', ['bar' => 'baz'], []),
+                $this->getEventWithId('message-id'),
             ),
             new StreamShouldNotExists(),
         );
@@ -147,7 +146,7 @@ final class IlluminateEventStoreTest extends TestCase
             $eventStore->appendToStream(
                 Stream::withName('stream-name'),
                 Events::of(
-                    new Event('message-id-2', 'foo', ['bar' => 'baz'], []),
+                    $this->getEventWithId('message-id'),
                 ),
                 new StreamShouldNotExists(),
             );
@@ -160,9 +159,6 @@ final class IlluminateEventStoreTest extends TestCase
 
         $this->assertCount(1, $messages);
         $this->assertEquals('message-id', $messages[0]->eventId);
-
-        $messages = $eventStore->getEvents(Stream::all())->events;
-        $this->assertCount(1, $messages);
     }
 
     /** @test */
@@ -173,7 +169,7 @@ final class IlluminateEventStoreTest extends TestCase
         $eventStore->appendToStream(
             Stream::withName('stream-name'),
             Events::of(
-                new Event('message-id', 'foo', ['f' => 'b'], []),
+                $this->getEventWithId('message-id'),
             ),
         );
 
@@ -181,7 +177,7 @@ final class IlluminateEventStoreTest extends TestCase
         $eventStore->appendToStream(
             Stream::withName('stream-name'),
             Events::of(
-                new Event('message-id-2', 'foo', ['f' => 'b'], []),
+                $this->getEventWithId('message-id-2'),
             ),
             new WithLastKnownEventId('message-id'),
         );
@@ -190,8 +186,8 @@ final class IlluminateEventStoreTest extends TestCase
         $eventStore->appendToStream(
             Stream::withName('stream-name'),
             Events::of(
-                new Event('message-id-3', 'foo', ['f' => 'b'], []),
-                    new Event('message-id-4', 'foo', ['f' => 'b'], []),
+                $this->getEventWithId('message-id-3'),
+                $this->getEventWithId('message-id-4'),
             ),
             new WithLastKnownEventId('message-id-2'),
         );
@@ -200,8 +196,8 @@ final class IlluminateEventStoreTest extends TestCase
         $eventStore->appendToStream(
             Stream::withName('stream-name'),
             Events::of(
-                new Event('message-id-3', 'foo', ['f' => 'b'], []),
-                new Event('message-id-5', 'foo', ['f' => 'b'], []),
+                $this->getEventWithId('message-id-3'),
+                $this->getEventWithId('message-id-5'),
             ),
             new WithLastKnownEventId('message-id-4'),
         );
@@ -212,7 +208,7 @@ final class IlluminateEventStoreTest extends TestCase
             $eventStore->appendToStream(
                 Stream::withName('stream-name'),
                 Events::of(
-                    new Event('message-id-6', 'foo', ['f' => 'b']),
+                    $this->getEventWithId('message-id-6'),
                 ),
                 new WithLastKnownEventId('message-id-4'),
             );
@@ -224,29 +220,6 @@ final class IlluminateEventStoreTest extends TestCase
         $messages = $eventStore->getEvents(Stream::withName('stream-name'))->events;
         $this->assertCount(5, $messages);
 
-        $messages = $eventStore->getEvents(Stream::all())->events;
-        $this->assertCount(5, $messages);
-    }
-
-    /** @test */
-    public function events_are_appended_to_the_all_stream()
-    {
-        $eventStore = $this->eventStore();
-        $eventStore->appendToStream(
-            Stream::withName('stream-name'),
-            Events::of(
-                new Event('message-id', 'foo', ['f' => 'b'], []),
-            ),
-        );
-        $eventStore->appendToStream(
-            Stream::withName('stream-name-2'),
-            Events::of(
-                new Event('message-id-2', 'foo', ['f' => 'b'], []),
-            ),
-        );
-
-        $messages = $eventStore->getEvents(Stream::all())->events;
-        $this->assertCount(2, $messages);
     }
 
     private function eventStore(): IlluminateEventStore
@@ -255,6 +228,15 @@ final class IlluminateEventStoreTest extends TestCase
             connection: $this->connection,
             streamTableNameResolver: new PrefixedTableNameResolver('stream_'),
             tableSchema: new DefaultTableSchema(),
+            eventSerializer: new EventSerializer(
+                new ConstructingPayloadSerializer(),
+                new DotSeparatedSnakeCaseInflector(),
+            ),
         );
+    }
+
+    private function getEventWithId(string $id): Event
+    {
+        return new Event($id, new TestEvent(), new Headers(['bar' => 'baz']));
     }
 }

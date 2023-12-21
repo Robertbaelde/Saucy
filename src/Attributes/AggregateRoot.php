@@ -8,7 +8,7 @@ use Attribute;
 class AggregateRoot
 {
     public function __construct(
-        public string $streamName,
+        public string $aggregateRootIdClass,
     )
     {
     }

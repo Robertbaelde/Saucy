@@ -35,6 +35,7 @@ final readonly class IlluminateEventStore implements EventStore
      */
     public function appendToStream(Stream $stream, Events $events, ?ConcurrencyCheck $concurrencyCheck = null): void
     {
+        $shouldRestartTransaction = false;
         $tableName = $this->streamTableNameResolver->streamToTableName($stream);
 
         $insertValues = $this->eventSerializer->serializeEvents($events, $this->tableSchema);
@@ -46,6 +47,9 @@ final readonly class IlluminateEventStore implements EventStore
         }
 
         try {
+            if($this->connection->transactionLevel() > 0){
+                $shouldRestartTransaction = true;
+            }
             $this->insert($tableName, $insertValues, $concurrencyCheck);
         } catch (QueryException $queryException) {
             if($queryException->getCode() !== '42S02'){
@@ -55,7 +59,9 @@ final readonly class IlluminateEventStore implements EventStore
             $this->connection->commit();
             $this->createStreamTable($tableName);
             // restart transaction?
-            $this->connection->beginTransaction();
+            if($shouldRestartTransaction){
+                $this->connection->beginTransaction();
+            }
             $this->appendToStream($stream, $events, $concurrencyCheck);
         }
     }
