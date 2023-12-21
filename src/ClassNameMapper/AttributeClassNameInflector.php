@@ -2,6 +2,7 @@
 
 namespace Robertbaelde\Saucy\ClassNameMapper;
 
+use EventSauce\EventSourcing\AggregateRootId;
 use EventSauce\EventSourcing\ClassNameInflector;
 use EventSauce\EventSourcing\ExplicitlyMappedClassNameInflector;
 use ReflectionClass;
@@ -20,11 +21,15 @@ final readonly class AttributeClassNameInflector implements ClassNameInflector
     {
         $classMap = [];
         foreach ($classes as $class) {
-            $name = self::getNameByAttribute($class);
+            $reflection = new ReflectionClass($class);
+            $name = self::getNameByAttribute($reflection) ?? self::getNameByAggregateRootIdConvention($reflection) ?? null;
             if($name !== null){
                 $classMap[$class] = $name;
+                continue;
             }
         }
+
+
         return new self($classMap);
     }
 
@@ -43,10 +48,9 @@ final readonly class AttributeClassNameInflector implements ClassNameInflector
         return $this->inner->instanceToType($instance);
     }
 
-    private static function getNameByAttribute(object|string $instance): ?string
+    private static function getNameByAttribute(ReflectionClass $reflectionClass): ?string
     {
-        $reflection = new ReflectionClass($instance);
-        $attributes = $reflection->getAttributes(Event::class);
+        $attributes = $reflectionClass->getAttributes(Event::class);
         if(count($attributes) === 0) {
             return null;
         }
@@ -56,5 +60,15 @@ final readonly class AttributeClassNameInflector implements ClassNameInflector
             return null;
         }
         return $attribute->name;
+    }
+
+    private static function getNameByAggregateRootIdConvention(ReflectionClass $reflectionClass): ?string
+    {
+
+        if($reflectionClass->implementsInterface(AggregateRootId::class)){
+            return $reflectionClass->getShortName();
+        }
+
+        return null;
     }
 }

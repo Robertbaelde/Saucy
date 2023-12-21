@@ -2,7 +2,7 @@
 
 namespace Robertbaelde\Saucy\EventSourcing\CommandHandler;
 
-use Robertbaelde\Saucy\EventSourcing\EventSauceRepository;
+use Robertbaelde\Saucy\EventSourcing\EventSauce\EventSauceRepository;
 
 final readonly class AggregateRootCommandHandler
 {
