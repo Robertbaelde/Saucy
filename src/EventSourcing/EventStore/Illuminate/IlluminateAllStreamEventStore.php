@@ -12,6 +12,7 @@ use Robertbaelde\Saucy\EventSourcing\EventStore\EventStoreHeader;
 use Robertbaelde\Saucy\EventSourcing\EventStore\Position;
 use Robertbaelde\Saucy\EventSourcing\EventStore\Serialization\EventSerializer;
 use Robertbaelde\Saucy\EventSourcing\EventStore\NamedStream;
+use Robertbaelde\Saucy\EventSourcing\EventStore\Stream;
 
 final readonly class IlluminateAllStreamEventStore implements EventStore
 {
@@ -29,7 +30,7 @@ final readonly class IlluminateAllStreamEventStore implements EventStore
         $this->stream = $stream ?? NamedStream::all();
     }
 
-    public function appendToStream(NamedStream $stream, Events $events, ?ConcurrencyCheck $concurrencyCheck = null): void
+    public function appendToStream(Stream $stream, Events $events, ?ConcurrencyCheck $concurrencyCheck = null): void
     {
         try {
             $this->connection->beginTransaction();
@@ -42,16 +43,16 @@ final readonly class IlluminateAllStreamEventStore implements EventStore
         }
     }
 
-    public function getEvents(NamedStream $stream, ?Position $position = null, ?int $limit = null): Events
+    public function getEvents(Stream $stream, ?Position $position = null, ?int $limit = null): Events
     {
         return $this->eventStore->getEvents($stream, $position, $limit);
     }
 
-    private function insertIntoAll(NamedStream $originalStream, Events $events): void
+    private function insertIntoAll(Stream $originalStream, Events $events): void
     {
         $this->connection->table($this->streamTableNameResolver->streamToTableName($this->stream))
             ->insertOrIgnore(
-                $this->eventSerializer->serializeEvents($events->addHeader(EventStoreHeader::ORIGINAL_STREAM, $originalStream->name), $this->tableSchema)
+                $this->eventSerializer->serializeEvents($events->addHeader(EventStoreHeader::ORIGINAL_STREAM, $originalStream->getName()), $this->tableSchema)
             );
     }
 
