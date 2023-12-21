@@ -19,7 +19,7 @@ final readonly class IlluminateAllStreamEventStore implements EventStore
     private NamedStream $stream;
 
     public function __construct(
-        private IlluminateEventStore $eventStore,
+        private IlluminateEventStore | StreamPerTypeIlluminateEventStore $eventStore,
         private ConnectionInterface $connection,
         private StreamTableNameResolver $streamTableNameResolver,
         private TableSchema $tableSchema,
