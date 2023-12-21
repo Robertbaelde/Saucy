@@ -36,4 +36,9 @@ final readonly class Events
         }, $this->events));
     }
 
+    public function isEmpty(): bool
+    {
+        return count($this->events) === 0;
+    }
+
 }

@@ -14,6 +14,6 @@ final readonly class PrefixedTableNameResolver implements StreamTableNameResolve
 
     public function streamToTableName(Stream $stream): string
     {
-        return $this->prefix . $stream->name;
+        return $this->prefix . $stream->getName();
     }
 }

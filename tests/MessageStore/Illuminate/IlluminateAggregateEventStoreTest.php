@@ -1,6 +1,6 @@
 <?php
 
-namespace Robertbaelde\Saucy\Tests\MessageStore\Illuminate;
+namespace MessageStore\Illuminate;
 
 use EventSauce\EventSourcing\DotSeparatedSnakeCaseInflector;
 use EventSauce\EventSourcing\Serialization\ConstructingPayloadSerializer;
@@ -9,8 +9,10 @@ use Robertbaelde\Saucy\EventSourcing\EventStore\Illuminate\DefaultTableSchema;
 use Robertbaelde\Saucy\EventSourcing\EventStore\Illuminate\IlluminateEventStore;
 use Robertbaelde\Saucy\EventSourcing\EventStore\Illuminate\PrefixedTableNameResolver;
 use Robertbaelde\Saucy\EventSourcing\EventStore\Serialization\EventSerializer;
+use Robertbaelde\Saucy\Tests\MessageStore\Illuminate\AbstractAggregateEventStoreTest;
+use Robertbaelde\Saucy\Tests\MessageStore\Illuminate\AbstractEventStoreTest;
 
-final class IlluminateEventStoreTest extends AbstractEventStoreTest
+final class IlluminateAggregateEventStoreTest extends AbstractAggregateEventStoreTest
 {
 
     private \Illuminate\Database\Connection $connection;

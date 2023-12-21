@@ -12,8 +12,8 @@ final readonly class AggregateRootStreamNameInflector
     {
     }
 
-    public function getStreamFor(string $aggregateRootType, AggregateRootId $aggregateRootId): Stream
+    public function getStreamFor(string $aggregateRootType, AggregateRootId $aggregateRootId): AggregateStream
     {
-        return new Stream($aggregateRootType . $this->delimiter . $aggregateRootId->toString());
+        return new AggregateStream(aggregateRootType: $aggregateRootType, aggregateRootId: $aggregateRootId->toString(), delimiter: $this->delimiter);
     }
 }

@@ -6,13 +6,13 @@ use EventSauce\EventSourcing\DotSeparatedSnakeCaseInflector;
 use EventSauce\EventSourcing\Serialization\ConstructingPayloadSerializer;
 use Illuminate\Database\Capsule\Manager;
 use Robertbaelde\Saucy\EventSourcing\EventStore\Illuminate\DefaultTableSchema;
-use Robertbaelde\Saucy\EventSourcing\EventStore\Illuminate\IlluminateEventStore;
 use Robertbaelde\Saucy\EventSourcing\EventStore\Illuminate\PrefixedTableNameResolver;
+use Robertbaelde\Saucy\EventSourcing\EventStore\Illuminate\StreamPerTypeIlluminateEventStore;
+use Robertbaelde\Saucy\EventSourcing\EventStore\Illuminate\StreamPerTypeTableSchema;
 use Robertbaelde\Saucy\EventSourcing\EventStore\Serialization\EventSerializer;
 
-final class IlluminateEventStoreTest extends AbstractEventStoreTest
+final class StreamPerTypeIlluminateEventStoreTest extends AbstractAggregateEventStoreTest
 {
-
     private \Illuminate\Database\Connection $connection;
 
     protected function setUp(): void
@@ -37,12 +37,12 @@ final class IlluminateEventStoreTest extends AbstractEventStoreTest
         $this->connection->getSchemaBuilder()->dropAllTables();
     }
 
-    protected function eventStore(): IlluminateEventStore
+    protected function eventStore(): StreamPerTypeIlluminateEventStore
     {
-        return new IlluminateEventStore(
+        return new StreamPerTypeIlluminateEventStore(
             connection: $this->connection,
-            streamTableNameResolver: new PrefixedTableNameResolver('stream_'),
-            tableSchema: new DefaultTableSchema(),
+            streamTableNameResolver: new PrefixedTableNameResolver(''),
+            tableSchema: new StreamPerTypeTableSchema(),
             eventSerializer: new EventSerializer(
                 new ConstructingPayloadSerializer(),
                 new DotSeparatedSnakeCaseInflector(),

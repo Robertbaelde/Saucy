@@ -11,11 +11,11 @@ use Robertbaelde\Saucy\EventSourcing\EventStore\EventStore;
 use Robertbaelde\Saucy\EventSourcing\EventStore\EventStoreHeader;
 use Robertbaelde\Saucy\EventSourcing\EventStore\Position;
 use Robertbaelde\Saucy\EventSourcing\EventStore\Serialization\EventSerializer;
-use Robertbaelde\Saucy\EventSourcing\EventStore\Stream;
+use Robertbaelde\Saucy\EventSourcing\EventStore\NamedStream;
 
 final readonly class IlluminateAllStreamEventStore implements EventStore
 {
-    private Stream $stream;
+    private NamedStream $stream;
 
     public function __construct(
         private IlluminateEventStore $eventStore,
@@ -23,13 +23,13 @@ final readonly class IlluminateAllStreamEventStore implements EventStore
         private StreamTableNameResolver $streamTableNameResolver,
         private TableSchema $tableSchema,
         private EventSerializer $eventSerializer,
-        ?Stream $stream = null,
+        ?NamedStream $stream = null,
     )
     {
-        $this->stream = $stream ?? Stream::all();
+        $this->stream = $stream ?? NamedStream::all();
     }
 
-    public function appendToStream(Stream $stream, Events $events, ?ConcurrencyCheck $concurrencyCheck = null): void
+    public function appendToStream(NamedStream $stream, Events $events, ?ConcurrencyCheck $concurrencyCheck = null): void
     {
         try {
             $this->connection->beginTransaction();
@@ -42,12 +42,12 @@ final readonly class IlluminateAllStreamEventStore implements EventStore
         }
     }
 
-    public function getEvents(Stream $stream, ?Position $position = null, ?int $limit = null): Events
+    public function getEvents(NamedStream $stream, ?Position $position = null, ?int $limit = null): Events
     {
         return $this->eventStore->getEvents($stream, $position, $limit);
     }
 
-    private function insertIntoAll(Stream $originalStream, Events $events): void
+    private function insertIntoAll(NamedStream $originalStream, Events $events): void
     {
         $this->connection->table($this->streamTableNameResolver->streamToTableName($this->stream))
             ->insertOrIgnore(
