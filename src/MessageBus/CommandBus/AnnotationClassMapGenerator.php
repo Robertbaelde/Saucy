@@ -23,7 +23,7 @@ final class AnnotationClassMapGenerator
         $map = [];
         foreach ($classes as $class) {
             if (!class_exists($class)) {
-                throw new \Exception('Class ' . $class . ' does not exist');
+                continue;
             }
 
             $reflection = new ReflectionClass($class);

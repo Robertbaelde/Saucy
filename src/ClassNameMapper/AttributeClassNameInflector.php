@@ -6,6 +6,7 @@ use EventSauce\EventSourcing\AggregateRootId;
 use EventSauce\EventSourcing\ClassNameInflector;
 use EventSauce\EventSourcing\ExplicitlyMappedClassNameInflector;
 use ReflectionClass;
+use Robertbaelde\AttributeFinder\AttributeFinder;
 use Robertbaelde\Saucy\Attributes\Event;
 
 final readonly class AttributeClassNameInflector implements ClassNameInflector
@@ -20,16 +21,14 @@ final readonly class AttributeClassNameInflector implements ClassNameInflector
     public static function create(array $classes): self
     {
         $classMap = [];
-        foreach ($classes as $class) {
-            $reflection = new ReflectionClass($class);
-            $name = self::getNameByAttribute($reflection) ?? self::getNameByAggregateRootIdConvention($reflection) ?? null;
-            if($name !== null){
-                $classMap[$class] = $name;
+        foreach(AttributeFinder::inClasses($classes)->withName(Event::class)->findClassAttributes() as $classAttribute){
+            $attribute = $classAttribute->attribute;
+            // should not be required, but makes phpStan happy
+            if(!$attribute instanceof Event){
                 continue;
             }
+            $classMap[$classAttribute->class] = $attribute->name;
         }
-
-
         return new self($classMap);
     }
 
@@ -46,29 +45,5 @@ final readonly class AttributeClassNameInflector implements ClassNameInflector
     public function instanceToType(object $instance): string
     {
         return $this->inner->instanceToType($instance);
-    }
-
-    private static function getNameByAttribute(ReflectionClass $reflectionClass): ?string
-    {
-        $attributes = $reflectionClass->getAttributes(Event::class);
-        if(count($attributes) === 0) {
-            return null;
-        }
-
-        $attribute = $attributes[0]->newInstance();
-        if(!$attribute instanceof Event) {
-            return null;
-        }
-        return $attribute->name;
-    }
-
-    private static function getNameByAggregateRootIdConvention(ReflectionClass $reflectionClass): ?string
-    {
-
-        if($reflectionClass->implementsInterface(AggregateRootId::class)){
-            return $reflectionClass->getShortName();
-        }
-
-        return null;
     }
 }

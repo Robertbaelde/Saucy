@@ -5,8 +5,9 @@
         "eventsauce/eventsauce": "^3.4",
         "illuminate/database": "^9|^10",
         "symfony/uid": "^6.0|^7.0",
-        "illuminate/queue": "^10.37",
-        "eventsauce/message-repository-for-illuminate": "^1.0"
+        "illuminate/queue": "^10",
+        "eventsauce/message-repository-for-illuminate": "^1.0",
+        "robertbaelde/attribute-finder": "^0.1.0"
     },
     "require-dev": {
         "phpunit/phpunit": "^10.5",
