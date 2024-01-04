@@ -8,10 +8,12 @@ use EventSauce\EventSourcing\ClassNameInflector;
 use EventSauce\EventSourcing\EventSourcedAggregateRootRepository;
 use EventSauce\EventSourcing\MessageDecorator;
 use EventSauce\EventSourcing\MessageDispatcher;
+use EventSauce\EventSourcing\MessageRepository;
 use EventSauce\EventSourcing\Serialization\MessageSerializer;
 use EventSauce\IdEncoding\StringIdEncoder;
 use EventSauce\MessageRepository\IlluminateMessageRepository\IlluminateMessageRepository;
 use Illuminate\Database\Connection;
+use Robertbaelde\Saucy\EventSourcing\Streams\PerAggregateRootInstanceStream;
 
 final class EventSauceRepository
 {
@@ -20,6 +22,11 @@ final class EventSauceRepository
      * @var array<class-string, EventSourcedAggregateRootRepository>
      */
     private array $aggregateRootRepositories = [];
+
+    /**
+     * @var array<class-string, MessageRepository>
+     */
+    private array $aggregateRootMessageRepositories = [];
 
     public function __construct(
         private Connection $connection,
@@ -57,21 +64,36 @@ final class EventSauceRepository
 
     }
 
+    public function getMessageRepositoryFor(string $aggregateRootClass): MessageRepository
+    {
+        return $this->getMessageRepository($aggregateRootClass);
+    }
+
     private function buildAggregateRootRepository(string $aggregateRootClass): EventSourcedAggregateRootRepository
     {
-        $tableName = $this->eventStreamTableMigrator->ensureTableExistsForAndReturnTableName($aggregateRootClass);
-
         return new EventSourcedAggregateRootRepository(
             aggregateRootClassName: $aggregateRootClass,
-            messageRepository: new IlluminateMessageRepository(
-                connection: $this->connection,
-                tableName: $tableName,
-                serializer: $this->serializer,
-                aggregateRootIdEncoder: new StringIdEncoder(),
-            ),
+            messageRepository: $this->getMessageRepository($aggregateRootClass),
             dispatcher: $this->dispatcher,
             decorator: $this->decorator,
             classNameInflector: $this->aggregateRootNameInflector,
         );
+    }
+
+    private function getMessageRepository(string $aggregateRootClass): MessageRepository
+    {
+        if(array_key_exists($aggregateRootClass, $this->aggregateRootMessageRepositories)){
+            return $this->aggregateRootMessageRepositories[$aggregateRootClass];
+        }
+        $tableName = $this->eventStreamTableMigrator->ensureTableExistsForAndReturnTableName($aggregateRootClass);
+
+        $messageRepository = new IlluminateMessageRepository(
+            connection: $this->connection,
+            tableName: $tableName,
+            serializer: $this->serializer,
+            aggregateRootIdEncoder: new StringIdEncoder(),
+        );
+        $this->aggregateRootMessageRepositories[$aggregateRootClass] = $messageRepository;
+        return $messageRepository;
     }
 }

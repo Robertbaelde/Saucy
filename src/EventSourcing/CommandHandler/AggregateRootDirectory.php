@@ -22,9 +22,12 @@ final readonly class AggregateRootDirectory
         return in_array($className, $this->aggregateRoots, true);
     }
 
-    public function getAggregateRootName(object $object): string
+    public function getAggregateRootName(string|object $object): string
     {
-        return array_search(get_class($object), $this->aggregateRoots, true);
+        if(is_object($object)){
+            $object = get_class($object);
+        }
+        return array_search($object, $this->aggregateRoots, true);
     }
 
     /**

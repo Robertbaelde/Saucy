@@ -8,7 +8,7 @@ use Attribute;
 final readonly class Projector
 {
     public function __construct(
-        public ?string $aggregateRootClass = null,
+        public string $aggregateRootClass,
     )
     {
     }

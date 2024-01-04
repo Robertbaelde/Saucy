@@ -23,11 +23,19 @@ final readonly class AttributeClassNameInflector implements ClassNameInflector
         $classMap = [];
         foreach(AttributeFinder::inClasses($classes)->withName(Event::class)->findClassAttributes() as $classAttribute){
             $attribute = $classAttribute->attribute;
-            // should not be required, but makes phpStan happy
+            // should not be required, but makes PhpStan happy
             if(!$attribute instanceof Event){
                 continue;
             }
             $classMap[$classAttribute->class] = $attribute->name;
+        }
+
+        foreach ($classes as $class){
+            $reflectionClass = new ReflectionClass($class);
+            $name = self::getNameByAggregateRootIdConvention($reflectionClass);
+            if($name !== null){
+                $classMap[$class] = $name;
+            }
         }
         return new self($classMap);
     }
@@ -45,5 +53,15 @@ final readonly class AttributeClassNameInflector implements ClassNameInflector
     public function instanceToType(object $instance): string
     {
         return $this->inner->instanceToType($instance);
+    }
+
+    private static function getNameByAggregateRootIdConvention(ReflectionClass $reflectionClass): ?string
+    {
+
+        if($reflectionClass->implementsInterface(AggregateRootId::class)){
+            return $reflectionClass->getShortName();
+        }
+
+        return null;
     }
 }

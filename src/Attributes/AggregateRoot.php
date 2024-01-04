@@ -9,6 +9,7 @@ class AggregateRoot
 {
     public function __construct(
         public string $aggregateRootIdClass,
+        public ?string $name = null,
     )
     {
     }
