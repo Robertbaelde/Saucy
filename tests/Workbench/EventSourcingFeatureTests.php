@@ -16,21 +16,24 @@ use Robertbaelde\Saucy\EventSourcing\MessageConsumption\Repositories\IlluminateS
 use Robertbaelde\Saucy\EventSourcing\Streams\PerAggregateRootInstanceStream;
 use Robertbaelde\Saucy\EventSourcing\Streams\PerAggregateTypeStream;
 use Robertbaelde\Saucy\MessageBus\CommandBus\CommandBus;
+use Robertbaelde\Saucy\MessageBus\QueryBus\QueryBus;
 use Workbench\App\BankAccount;
 use Workbench\App\Commands\BankAccountId;
 use Workbench\App\Commands\CreditBankAccount;
 use Workbench\App\Events\BankAccountCredited;
-use Workbench\App\Projectors\BankAccountProjector;
+use Workbench\App\Projectors\BankAccountBalanceProjector;
+use Workbench\App\Query\BankAccountWithBalance;
+use Workbench\App\Query\GetBankAccountBalance;
 
 final class EventSourcingFeatureTests extends WithDatabaseTestCase
 {
-    use WithWorkbench;
 
     /** @test */
     public function it_handles_commands_and_queries()
     {
         $bankAccountId = BankAccountId::generate();
         $bankAccountBId = BankAccountId::generate();
+
         $commandBus = $this->app->make(CommandBus::class);
         $commandBus->handle(new CreditBankAccount(
             bankAccountId: $bankAccountId,
@@ -43,41 +46,19 @@ final class EventSourcingFeatureTests extends WithDatabaseTestCase
 
         $commandBus->handle(new CreditBankAccount(
             bankAccountId: $bankAccountBId,
-            amount: 300,
+            amount: 150,
         ));
 
+        $queryBus = $this->app->make(QueryBus::class);
 
-        // check if we can trigger projection
+        /** @var BankAccountWithBalance $bankAccountWithBalance */
+        $bankAccountWithBalance = $queryBus->query(new GetBankAccountBalance($bankAccountId));
+        $this->assertTrue($bankAccountWithBalance->bankAccountId->equals($bankAccountId));
+        $this->assertEquals(300, $bankAccountWithBalance->balance);
 
-//        $messageRepository = resolve(EventSauceRepository::class)->getMessageRepositoryFor(BankAccount::class);
-//
-//        $sub = new ConsumerSubscription(
-//            messageStream: new PerAggregateTypeStream(
-//                messageRepository: $messageRepository,
-//            ),
-//            subscriptionState: resolve(IlluminateSubscriptionState::class),
-//            consumer: new BankAccountProjector(),
-//        );
-//
-//        $message = new Message(new BankAccountCredited(123), [
-//            Header::AGGREGATE_ROOT_ID => $bankAccountId,
-//            Header::AGGREGATE_ROOT_TYPE => 'bank_accounts',
-//        ]);
-
-//        $sub->trigger($message);
-
-        // this should not yield to new results
-//        $sub->trigger($message);
-
-//        $message = new Message(new BankAccountCredited(123), [
-//            Header::AGGREGATE_ROOT_ID => $bankAccountBId,
-//        ]);
-//        $sub->trigger($message);
-
-//        $this->assertDatabaseCount('bank_accounts_events', 2);
-
-        dd(DB::table('stream_positions')->get());
-
-
+        /** @var BankAccountWithBalance $bankAccountWithBalance */
+        $bankAccountWithBalance = $queryBus->query(new GetBankAccountBalance($bankAccountBId));
+        $this->assertTrue($bankAccountWithBalance->bankAccountId->equals($bankAccountBId));
+        $this->assertEquals(150, $bankAccountWithBalance->balance);
     }
 }

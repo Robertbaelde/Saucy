@@ -10,7 +10,7 @@ use Robertbaelde\Saucy\SaucyServiceProvider;
 
 abstract class WithDatabaseTestCase extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, WithWorkbench;
 
     /**
      * Define environment setup.

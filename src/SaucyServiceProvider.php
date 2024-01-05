@@ -30,8 +30,14 @@ use Robertbaelde\Saucy\MessageBus\CommandBus\AnnotationClassMapGenerator;
 use Robertbaelde\Saucy\MessageBus\CommandBus\CommandBus;
 use Robertbaelde\Saucy\MessageBus\CommandBus\CommandHandlerMiddleware;
 use Robertbaelde\Saucy\MessageBus\CommandBus\MappedCommandHandlerLocator;
+use Robertbaelde\Saucy\MessageBus\QueryBus\MappedQueryHandlerLocator;
+use Robertbaelde\Saucy\MessageBus\QueryBus\QueryBus;
+use Robertbaelde\Saucy\MessageBus\QueryBus\QueryHandlerLocation;
+use Robertbaelde\Saucy\MessageBus\QueryBus\QueryHandlerMiddleware;
 use Workbench\App\BankAccount;
+use Workbench\App\Projectors\BankAccountBalanceProjector;
 use Workbench\App\Projectors\BankAccountProjector;
+use Workbench\App\Query\GetBankAccountBalance;
 
 final class SaucyServiceProvider extends ServiceProvider
 {
@@ -132,6 +138,17 @@ final class SaucyServiceProvider extends ServiceProvider
                 new CommandHandlerMiddleware(
                     $this->app,
                     $locator,
+                )
+            )
+        );
+
+        $this->app->instance(QueryBus::class,
+            new QueryBus(
+                new QueryHandlerMiddleware(
+                    $this->app,
+                    new MappedQueryHandlerLocator(
+                        (new \Robertbaelde\Saucy\MessageBus\QueryBus\AnnotationClassMapGenerator($classes))->getMap(),
+                    )
                 )
             )
         );
