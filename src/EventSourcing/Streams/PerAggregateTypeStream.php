@@ -20,7 +20,7 @@ final readonly class PerAggregateTypeStream implements MessageStream
         return $message->aggregateRootType() ?? throw new \Exception('Aggregate root type not set');
     }
 
-    public function getMessagesSince(Message $message, int $position): \Generator
+    public function getMessagesSince(string $streamIdentifier, int $position): \Generator
     {
         return $this->iterator_map(
             fn(Message $message, int $generatorPosition) => $message->withHeader(self::HEADER_KEY, $position + $generatorPosition + 1),

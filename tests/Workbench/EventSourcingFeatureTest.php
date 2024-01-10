@@ -25,7 +25,7 @@ use Workbench\App\Projectors\BankAccountBalanceProjector;
 use Workbench\App\Query\BankAccountWithBalance;
 use Workbench\App\Query\GetBankAccountBalance;
 
-final class EventSourcingFeatureTests extends WithDatabaseTestCase
+final class EventSourcingFeatureTest extends WithDatabaseTestCase
 {
 
     /** @test */

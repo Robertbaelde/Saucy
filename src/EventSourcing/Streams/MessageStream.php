@@ -10,7 +10,7 @@ interface MessageStream
 
     public function getIdentifierFor(Message $message): string;
 
-    public function getMessagesSince(Message $message, int $position): Generator;
+    public function getMessagesSince(string $streamIdentifier, int $position): Generator;
 
     public function getPositionOfEvent(Message $message): int;
 }

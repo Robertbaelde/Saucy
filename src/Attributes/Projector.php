@@ -9,6 +9,7 @@ final readonly class Projector
 {
     public function __construct(
         public string $aggregateRootClass,
+        public bool $isIndividual = false,
     )
     {
     }

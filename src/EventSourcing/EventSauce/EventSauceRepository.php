@@ -46,6 +46,7 @@ final class EventSauceRepository
      */
     public function retrieve(string $aggregateRootClass, AggregateRootId $aggregateRootId): object
     {
+        $this->eventStreamTableMigrator->ensureTableExistsForAndReturnTableName($aggregateRootClass);
         if(!array_key_exists($aggregateRootClass, $this->aggregateRootRepositories)){
             $this->aggregateRootRepositories[$aggregateRootClass] = $this->buildAggregateRootRepository($aggregateRootClass);
         }
@@ -55,6 +56,7 @@ final class EventSauceRepository
 
     public function persist(AggregateRoot $aggregateRoot): void
     {
+        $this->eventStreamTableMigrator->ensureTableExistsForAndReturnTableName(get_class($aggregateRoot));
         $className = $aggregateRoot::class;
         if(!array_key_exists($className, $this->aggregateRootRepositories)){
             $this->aggregateRootRepositories[$className] = $this->buildAggregateRootRepository($className);
@@ -85,6 +87,7 @@ final class EventSauceRepository
         if(array_key_exists($aggregateRootClass, $this->aggregateRootMessageRepositories)){
             return $this->aggregateRootMessageRepositories[$aggregateRootClass];
         }
+
         $tableName = $this->eventStreamTableMigrator->ensureTableExistsForAndReturnTableName($aggregateRootClass);
 
         $messageRepository = new IlluminateMessageRepository(

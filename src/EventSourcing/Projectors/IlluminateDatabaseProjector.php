@@ -35,6 +35,10 @@ abstract class IlluminateDatabaseProjector implements MessageConsumer
     {
         $this->queryBuilder->clone()->update($array);
     }
+    protected function increment(string $column, int $amount = 1): void
+    {
+        $this->queryBuilder->clone()->increment($column, $amount);
+    }
 
     protected function create(array $array): void
     {
@@ -50,6 +54,11 @@ abstract class IlluminateDatabaseProjector implements MessageConsumer
             return null;
         }
         return get_object_vars($row);
+    }
+
+    protected function delete(): void
+    {
+        $this->queryBuilder->clone()->delete();
     }
 
     public function tableName(): string
@@ -74,9 +83,7 @@ abstract class IlluminateDatabaseProjector implements MessageConsumer
         $this->queryBuilder = $this->connection->table($this->tableName());
         $this->scopeAggregate($message->aggregateRootId());
 
-        $this->connection->getSchemaBuilder()->hasTable($this->tableName()) || $this->connection->getSchemaBuilder()->create($this->tableName(), function (Blueprint $blueprint) {
-            $this->schema($blueprint);
-        });
+       $this->migrate();
 
         $methods = (new InflectHandlerMethodsFromType())->handleMethods($this, $message);
         foreach ($methods as $method) {
@@ -84,5 +91,17 @@ abstract class IlluminateDatabaseProjector implements MessageConsumer
                 $this->{$method}($message->payload(), $message->aggregateRootId(), $message);
             }
         }
+    }
+
+    protected function migrate()
+    {
+        $this->connection->getSchemaBuilder()->hasTable($this->tableName()) || $this->connection->getSchemaBuilder()->create($this->tableName(), function (Blueprint $blueprint) {
+            $this->schema($blueprint);
+        });
+    }
+
+    public function reset()
+    {
+        $this->connection->getSchemaBuilder()->dropIfExists($this->tableName());
     }
 }

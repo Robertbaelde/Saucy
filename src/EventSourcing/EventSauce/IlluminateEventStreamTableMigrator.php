@@ -18,9 +18,11 @@ final readonly class IlluminateEventStreamTableMigrator implements EventStreamTa
     public function ensureTableExistsForAndReturnTableName(string $aggregateRoot): string
     {
         $type = $this->aggregateRootNameInflector->classNameToType($aggregateRoot);
+
         if($this->connection->getSchemaBuilder()->hasTable($type)){
             return $type;
         }
+
 
         $this->connection->getSchemaBuilder()->create($type, function (Blueprint $table) {
             $table->id();

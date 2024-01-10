@@ -23,6 +23,7 @@ final readonly class EventSourcingCommandHandlerMiddleware implements Middleware
         try {
             $handler = $this->handlerLocator->getHandler($message);
         } catch (\Exception $e) {
+            throw $e;
             $next($message);
             return;
         }
