@@ -13,7 +13,7 @@ abstract class EloquentProjector implements MessageConsumer
 
     protected function upsert(array $array): void
     {
-        if(static::$model::exists($this->idValue)){
+        if(static::$model::find($this->idValue)){
             $this->update($array);
             return;
         }
