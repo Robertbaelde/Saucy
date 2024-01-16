@@ -54,9 +54,10 @@ final readonly class ConsumerSubscription
                 $this->consumer->handle($message);
             }
 
-            $this->subscriptionState->storePositionInStream($consumerSubscriptionIdentifier, $this->messageStream->getPositionOfEvent($message));
+            if(isset($message)) {
+                $this->subscriptionState->storePositionInStream($consumerSubscriptionIdentifier, $this->messageStream->getPositionOfEvent($message));
+            }
             $this->subscriptionState->releaseLock($consumerSubscriptionIdentifier);
-
         } catch (\Throwable $e) {
             DB::rollBack();
             $this->subscriptionState->releaseLock($consumerSubscriptionIdentifier);
