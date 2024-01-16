@@ -5,13 +5,14 @@ namespace Robertbaelde\Saucy\EventSourcing\Streams;
 use EventSauce\EventSourcing\Message;
 use EventSauce\EventSourcing\MessageRepository;
 use EventSauce\EventSourcing\OffsetCursor;
+use EventSauce\EventSourcing\PaginationCursor;
 
-final readonly class PerAggregateTypeStream implements MessageStream
+final class PerAggregateTypeStream implements MessageStream
 {
-    const HEADER_KEY = 'per_aggregate_type_stream_position';
+    private OffsetCursor $nextCursor;
 
     public function __construct(
-        private MessageRepository $messageRepository,
+        private readonly MessageRepository $messageRepository,
     ) {
     }
 
@@ -22,20 +23,20 @@ final readonly class PerAggregateTypeStream implements MessageStream
 
     public function getMessagesSince(string $streamIdentifier, int $position): \Generator
     {
-        return $this->iterator_map(
-            fn(Message $message, int $generatorPosition) => $message->withHeader(self::HEADER_KEY, $position + $generatorPosition + 1),
-            $this->messageRepository->paginate(OffsetCursor::fromOffset($position))
-        );
+        $messages = $this->messageRepository->paginate(OffsetCursor::fromOffset($position));
+        foreach ($messages as $message){
+            yield $message;
+        }
+        $this->nextCursor = $messages->getReturn();
+        return $messages->getReturn();
     }
 
     public function getPositionOfEvent(Message $message): int
     {
-        return $message->header(self::HEADER_KEY);
+        if(!isset($this->nextCursor)){
+            throw new \Exception('No next cursor set');
+        }
+        return $this->nextCursor->offset();
     }
 
-    public function iterator_map(callable $cb, iterable $itr): iterable {
-        foreach ($itr as $key => $value) {
-            yield $cb($value, $key);
-        }
-    }
 }

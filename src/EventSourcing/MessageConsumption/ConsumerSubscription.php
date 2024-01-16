@@ -5,6 +5,7 @@ namespace Robertbaelde\Saucy\EventSourcing\MessageConsumption;
 use EventSauce\EventSourcing\Message;
 use EventSauce\EventSourcing\MessageConsumer;
 use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Robertbaelde\Saucy\EventSourcing\Streams\MessageStream;
@@ -46,12 +47,24 @@ final readonly class ConsumerSubscription
         $streamIdentifier = str_replace($this->getName() . '_', '', $consumerSubscriptionIdentifier);
         $messages = $this->messageStream->getMessagesSince($streamIdentifier, $position);
 
-        foreach ($messages as $message) {
-            $this->consumer->handle($message);
+        DB::beginTransaction();
+
+        try {
+            foreach ($messages as $message) {
+                $this->consumer->handle($message);
+            }
+
             $this->subscriptionState->storePositionInStream($consumerSubscriptionIdentifier, $this->messageStream->getPositionOfEvent($message));
+            $this->subscriptionState->releaseLock($consumerSubscriptionIdentifier);
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            $this->subscriptionState->releaseLock($consumerSubscriptionIdentifier);
+            throw $e;
         }
 
-        $this->subscriptionState->releaseLock($consumerSubscriptionIdentifier);
+
+        DB::commit();
 
     }
 
