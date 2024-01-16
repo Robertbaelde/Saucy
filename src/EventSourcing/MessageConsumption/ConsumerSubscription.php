@@ -47,8 +47,6 @@ final readonly class ConsumerSubscription
         $streamIdentifier = str_replace($this->getName() . '_', '', $consumerSubscriptionIdentifier);
         $messages = $this->messageStream->getMessagesSince($streamIdentifier, $position);
 
-        DB::beginTransaction();
-
         try {
             foreach ($messages as $message) {
                 $this->consumer->handle($message);
@@ -59,14 +57,9 @@ final readonly class ConsumerSubscription
             }
             $this->subscriptionState->releaseLock($consumerSubscriptionIdentifier);
         } catch (\Throwable $e) {
-            DB::rollBack();
             $this->subscriptionState->releaseLock($consumerSubscriptionIdentifier);
             throw $e;
         }
-
-
-        DB::commit();
-
     }
 
     public function getPosition(string $streamIdentifier): int
